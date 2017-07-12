@@ -43,6 +43,7 @@ HWND TeamOrIndividual, ListOfTeamsOrIndividuals, Event, AddToBTN;
 
 HWND ListView, EventSelection, hwModifyMenu;
 
+HWND AddScore, minScore;
 
 HWND modifyform;
 
@@ -51,27 +52,73 @@ ModifyUserBTN, //ListOfTeamz, //IndividualsTeam
 EventIndividuallb, EventIndividualList;
 HWND IndividualsOrTeam;
 
-#define DLG_MAIN           1000
-#define TAB_MAIN           1100
-#define TAB_ONE            1101
-#define MSG_ONE            1102
-#define TAB_TWO            1201
-#define MSG_TWO            1202 
-
-#define _WIN32_IE 0x0900
-#define _WIN32_WINNT 0x0900
-
-
-std::vector<std::tuple<std::string, int >> Teams; //Name, // Slots left
 std::vector<std::tuple<std::string, std::string >> Events; //Event Name, // Event Type
 std::vector<std::tuple<std::string, std::string >> Individuals; //Individual Name, // Team name
+
+std::vector<std::tuple<std::string, int >> Teams; //Name, // Slots left
 
 std::vector<std::tuple<std::string, std::string, bool, int >> inEvents; //Name (Individual or team), // Event Name, // IsTeam (True) //, Score
 
 //std::vector<std::tuple<std::string, std::string, int >> Individual; //Individual Name, // Team name, // 
 
+std::wstring s2ws(const std::string& s)
+{
+	int len;
+	int slength = (int)s.length() + 1;
+	len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, 0, 0);
+	wchar_t* buf = new wchar_t[len];
+	MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
+	std::wstring r(buf);
+	delete[] buf;
+	return r;
+}
+
+//Send this in reverse order :P 
+bool AddItemToRankBoard(std::string name, int rank, int score)
+{
+	
+	const int MAX_SIZE = 256;
+	wchar_t szBuffer[MAX_SIZE];
+
+	std::wstring temps;
+
+	LVITEM LvItem; // Defines the item to insert to randboard
+
+	memset(&LvItem, 0, sizeof(LvItem)); // Resets it to NULL / Zero base
+
+	LvItem.mask = LVIF_TEXT; // Only allow for text input
+	LvItem.cchTextMax = MAX_SIZE; // Max size 256
+	LvItem.iItem = 0; // Item definition 
+
+	LvItem.iSubItem = 0;
+	//convert
+	temps = s2ws(std::to_string(rank));
+	wcscpy(szBuffer, temps.c_str());
+	LvItem.pszText = szBuffer;
+	SendMessage(ListView, LVM_INSERTITEM, 1, (LPARAM)&LvItem); // send message to rankboard to insert item
+
+	LvItem.iSubItem = 1; // col 2
+	//Convert 
+	temps = s2ws(name);
+	wcscpy(szBuffer, temps.c_str());
+	LvItem.pszText = szBuffer;
+	SendMessage(ListView, LVM_SETITEM, 2, (LPARAM)&LvItem); // send message to rankboard to set item
+
+	LvItem.iSubItem = 2; // col 3
+	//Convert
+	temps = s2ws(std::to_string(score));
+	wcscpy(szBuffer, temps.c_str());
+	LvItem.pszText = szBuffer;
+	SendMessage(ListView, LVM_SETITEM, 3, (LPARAM)&LvItem); // send message to rankboard to set item
+
+	return true;
+}
+
 int WINAPI WinMain(HINSTANCE hinst, HINSTANCE hPrevInst, char* cmdArgs, int cmdShow)
 {
+	AllocConsole();
+	freopen("CONOUT$", "w", stdout);
+
 	// Get screen width and height
 	ScreenH = GetSystemMetrics(SM_CYSCREEN);
 	ScreenW = GetSystemMetrics(SM_CXSCREEN);
@@ -90,7 +137,7 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE hPrevInst, char* cmdArgs, int cmdS
 		MessageBox(NULL, TEXT("Failed to initilize GUI"), NULL, NULL);
 
 
-	Teams.push_back(std::make_tuple("None", 4)); // Team name, Slots left
+	Teams.push_back(std::make_tuple("None", 20)); // Team name, Slots left
 
 	std::string tempstr;
 	std::wstring temp;
@@ -125,6 +172,9 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE hPrevInst, char* cmdArgs, int cmdS
 	
 	ShowWindow(ModifyUserBTN, SW_HIDE);
 
+	ShowWindow(AddScore, SW_HIDE);
+	ShowWindow(minScore, SW_HIDE); 
+
 	//ShowWindow(IndividualsTeam, SW_HIDE);
 	//ShowWindow(ListOfTeamz, SW_HIDE);
 
@@ -138,7 +188,7 @@ int WINAPI WinMain(HINSTANCE hinst, HINSTANCE hPrevInst, char* cmdArgs, int cmdS
 
 #pragma endregion
 
-	
+
 	ShowWindow(WindowForm, SW_SHOW); // Make sure to make the window vidable
 	UpdateWindow(WindowForm); // Update it. 
 	
@@ -181,47 +231,6 @@ bool InitRegisterClass(HINSTANCE hinst)
 		return false;
 	else
 		return true;
-}
-
-std::wstring s2ws(const std::string& s)
-{
-	int len;
-	int slength = (int)s.length() + 1;
-	len = MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, 0, 0);
-	wchar_t* buf = new wchar_t[len];
-	MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, buf, len);
-	std::wstring r(buf);
-	delete[] buf;
-	return r;
-}
-
-bool AddItemToRankBoard(int rank, std::string name, int score)
-{
-	std::wstring stemp;
-	LVITEM LvItem;  
-
-	memset(&LvItem, 0, sizeof(LvItem)); 
-
-	LvItem.mask = LVIF_TEXT;   
-	LvItem.cchTextMax = 256; 
-
-	LvItem.iItem = 0;         
-	LvItem.iSubItem = 0; 
-
-	LvItem.pszText = L"";
-
-	SendMessage(ListView, LVM_INSERTITEM, 0, (LPARAM)&LvItem); // Send to the Listview
-
-
-	LvItem.iSubItem = 1;       // Put in first coluom
-	LvItem.pszText = L"Item 1"; // Text to display (can be from a char variable) (Items)
-
-	SendMessage(ListView, LVM_SETITEM, 1, (LPARAM)&LvItem); // Send to the Listview
-
-	LvItem.iSubItem = 2;       // Put in first coluom
-	LvItem.pszText = L"Item 1"; // Text to display (can be from a char variable) (Items)
-
-	SendMessage(ListView, LVM_SETITEM, 1, (LPARAM)&LvItem); // Send to the Listview
 }
 
 /*
@@ -377,7 +386,7 @@ bool MainForm(HINSTANCE hinst)
 #pragma endregion
 
 	hwModifyMenu = CreateWindow(
-		WC_BUTTON, TEXT("Modify Individual / Team"),
+		WC_BUTTON, TEXT("Modify Events (Team/Individual)"),
 		ES_LEFT | WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
 		10 + 300 + 20, 10 + 18 + 5 + 25 + 5 + 50, 300, 25,
 		WindowForm, NULL, gInst, NULL);
@@ -388,7 +397,7 @@ bool MainForm(HINSTANCE hinst)
 	HWND lbEventSelection = CreateWindow(
 		WC_STATIC, TEXT("Event Type:"),
 		ES_RIGHT | WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
-		10 + (655 - 300) + 10, 129 + 3 + 25 + 10, 70, 18,
+		10 + 300 + 20, 129 + 3 + 25 + 10, 120, 18,
 		WindowForm, NULL, gInst, NULL);
 
 	if (!lbEventSelection)
@@ -398,11 +407,35 @@ bool MainForm(HINSTANCE hinst)
 		WC_COMBOBOX,
 		NULL,
 		CBS_HASSTRINGS | CBS_DROPDOWNLIST | WS_CHILD | WS_VSCROLL | WS_VISIBLE,
-		10 + (655 - 300) + 10 + 70 + 5, 129 + 3 + 25 + 10, 175, 18,
+		10 + 300 + 20 + 120 + 5, 129 + 3 + 25 + 10, 175, 18,
 		WindowForm, NULL, gInst, NULL);
 
 	if (!EventSelection)
 		return false;
+
+#pragma region sadhjikldbasjkbdjkasbjdkabsjkdbakshjbdkhjblni
+
+#pragma endregion
+
+	AddScore = CreateWindow(
+		WC_BUTTON, TEXT("+1 Score"),
+		ES_LEFT | WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+		10 + 300 + 20, 129 + 3 + 25 + 10 + 100, 145, 25,
+		WindowForm, NULL, gInst, NULL);
+
+	if (!AddScore)
+		return false;
+
+	minScore = CreateWindow(
+		WC_BUTTON, TEXT("-1 Score"),
+		ES_LEFT | WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL,
+		10 + 300 + 20 + 145 + 10, 129 + 3 + 25 + 10 + 100, 145, 25,
+		WindowForm, NULL, gInst, NULL);
+
+	if (!minScore)
+		return false;
+
+#pragma region Creates the Rankboard
 
 	ListView = CreateWindowEx(0L,
 		WC_LISTVIEW,                // list view class
@@ -410,7 +443,7 @@ bool MainForm(HINSTANCE hinst)
 		WS_VISIBLE | WS_CHILD | WS_BORDER | LVS_REPORT |
 		LVS_EDITLABELS | WS_EX_CLIENTEDGE | LBS_MULTICOLUMN,
 		10, 129 + 3 + 25 + 10,
-		655 - 300, 400,
+		300, 400,
 		WindowForm,
 		NULL,
 		gInst,
@@ -434,6 +467,8 @@ bool MainForm(HINSTANCE hinst)
 	lvc.pszText = TEXT("Score");
 	SendMessage(ListView, LVM_INSERTCOLUMN, 2, (LPARAM)&lvc); // Insert/Show the coloum
 	
+#pragma endregion
+
 	return true;
 }
 
@@ -464,33 +499,40 @@ LRESULT CALLBACK MainWindow(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 				std::wstring temp(szTeamName);
 				std::string TeamSTR(temp.begin(), temp.end());
 
-				/*if (Teams.size() == 0)
+				if (Teams.size() == 0)
 				{
-					Teams.push_back(std::make_tuple(TeamSTR, 4)); // Team name, Slots left
+					Teams.push_back(std::make_tuple(TeamSTR, 5)); // Team name, Slots left
 				}
-				else {*/
-					bool add = false;
-
-					for (int i = 0; i < Teams.size(); i++)
+				else {
+					if (Teams.size() > 4)
 					{
-						if (std::get<0>(Teams[i]) == TeamSTR)
+						MessageBox(NULL, L"Too many teams", NULL, NULL);
+					}
+					else {
+						bool add = false;
+
+						for (int i = 0; i < Teams.size(); i++)
 						{
-							MessageBox(NULL, L"Team Name allready exsists", NULL, NULL);
-							add = false;
-							break;
+							if (std::get<0>(Teams[i]) == TeamSTR)
+							{
+								MessageBox(NULL, L"Team Name allready exsists", NULL, NULL);
+								add = false;
+								break;
+							}
+							else if (std::get<0>(Teams[i]) != TeamSTR) {
+								add = true;
+								continue;
+							}
 						}
-						else if (std::get<0>(Teams[i]) != TeamSTR){
-							add = true;
-							continue;
-						}
-					}
 
-					if (add)
-					{
-						Teams.push_back(std::make_tuple(TeamSTR, 4)); // Team name, Slots left
-						add = false;
+						if (add)
+						{
+							Teams.push_back(std::make_tuple(TeamSTR, 5)); // Team name, Slots left
+							add = false;
+						}
 					}
-				//}
+				}
+				std::cout << Teams.size() << std::endl;
 				
 				SendMessage(IndividualTeam, CB_RESETCONTENT, 0, 0);
 
@@ -583,16 +625,16 @@ LRESULT CALLBACK MainWindow(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 				std::string strIndvName(temp.begin(), temp.end());
 				std::string strIndivTeam(temp2.begin(), temp2.end());
 
-				if (Events.size() == 0)
-				{
-					Individuals.push_back(std::make_tuple(strIndvName, strIndivTeam)); 
+				bool add = false;
+				if (Individuals.size() == 0)
+				{ 
+					add = true;
 				}
 				else {
-					bool add = false;
 
-					for (int i = 0; i < Events.size(); i++)
+					for (int i = 0; i < Individuals.size(); i++)
 					{
-						if (std::get<0>(Events[i]) == strIndvName && std::get<1>(Events[i]) == strIndivTeam)
+						if (std::get<0>(Individuals[i]) == strIndvName || (std::get<0>(Individuals[i]) == strIndvName && std::get<1>(Individuals[i]) == strIndivTeam))
 						{
 							MessageBox(NULL, L"This person allready exsists", NULL, NULL);
 							add = false;
@@ -604,11 +646,34 @@ LRESULT CALLBACK MainWindow(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 						}
 					}
 
-					if (add)
+					
+				}
+
+				for (int i = 0; i < Teams.size(); i++)
+				{
+					if (std::get<0>(Teams[i]) == strIndivTeam)
 					{
-						Individuals.push_back(std::make_tuple(strIndvName, strIndivTeam)); 
-						add = false;
+						int slots = std::get<1>(Teams[i]);
+						std::cout << strIndivTeam << "  :  " << slots << std::endl;
+						if (slots == 0)
+						{
+							MessageBox(NULL, L"No more slots", NULL, NULL);
+							add = false;
+							break;
+						}
+						else {
+							slots -= 1;
+							std::get<1>(Teams[i]) = slots;
+							add = true;
+							continue;
+						}
 					}
+				}
+
+				if (add)
+				{
+					Individuals.push_back(std::make_tuple(strIndvName, strIndivTeam));
+					add = false;
 				}
 
 				/*
@@ -635,6 +700,7 @@ LRESULT CALLBACK MainWindow(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			ShowWindow(modifyform, SW_SHOW);
 			SetFocus(modifyform);
 			UpdateWindow(modifyform);
+			std::cout << "Opened form" << std::endl;
 		}
 
 		if ((HWND)lparam == EventSelection && HIWORD(wparam) == CBN_SELCHANGE)
@@ -642,14 +708,66 @@ LRESULT CALLBACK MainWindow(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
 			wchar_t szEventName[256];
 			GetWindowText(EventSelection, szEventName, 256);
 
+			std::wstring temp(szEventName);
+			std::string eventname(temp.begin(), temp.end());
+
 			if (!wcslen(szEventName))
 			{
 				MessageBox(NULL, L"Event name or Event Type cannot be empty", NULL, NULL);
 			}
 			else {
-				MessageBox(NULL, L"Changed Event", NULL, NULL);
+				SendMessage(ListView, LVM_DELETEALLITEMS, 0, 0);
+
+				for (int i = 0; i < inEvents.size(); i++)
+				{
+					std::string tempEventname = std::get<1>(inEvents[i]);
+					//Name (Individual or team), // Event Name, // IsTeam (True) //, Score
+
+					if (eventname.find(tempEventname) != std::string::npos)
+					{
+						AddItemToRankBoard(std::get<0>(inEvents[i]), 0, std::get<3>(inEvents[i])); 
+
+					}
+
+				/*	if (tempEventname.find(eventname) != std::string::npos && tempEventname.find(std::get<3>(inEvents[i]) ? "Team" : "Individual") != std::string::npos)
+					{
+						AddItemToRankBoard(std::get<0>(inEvents[i]), 0, std::get<3>(inEvents[i]));
+					}*/
+				}
+
+				//MessageBox(NULL, L"Changed Event", NULL, NULL);
 			}
+			ShowWindow(AddScore, SW_SHOW);
+			ShowWindow(minScore, SW_SHOW);
 		}
+
+		if ((HWND)lparam == ListView && HIWORD(wparam) == LBN_SELCHANGE)
+		{
+
+
+		}
+
+		//Add Score 
+		if ((HWND)lparam == AddScore && HIWORD(wparam) == BN_CLICKED)
+		{
+
+			// line number to highlight (zero-based, so this example will select the third line down)
+			int nLine = 2;
+
+			ListView_SetExtendedListViewStyle(ListView, LVS_EX_FULLROWSELECT);
+			ListView_SetItemState(ListView, -1, 0, LVIS_SELECTED); // deselect all
+			ListView_SetItemState(ListView, 1, LVIS_SELECTED, LVIS_SELECTED); // select line nLine
+
+			int selectedItem = ListView_GetItem(ListView,0 );
+
+			std::cout << "Selected Index: " << selectedItem << std::endl;
+		}
+
+		if ((HWND)lparam == minScore && HIWORD(wparam) == BN_CLICKED)
+		{
+
+		}
+
 
 		break;
 	case WM_PAINT:
@@ -953,10 +1071,6 @@ LRESULT CALLBACK initModifyForm(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 				else {
 					if (TypeOdEdit == "Individual")
 					{
-
-
-
-
 						if (inEvents.size() == 0)
 						{
 							inEvents.push_back(std::make_tuple(strName, StrEvent, true, 0));
@@ -1019,8 +1133,6 @@ LRESULT CALLBACK initModifyForm(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 					}
 				
 				}
-				
-
 			}
 		}
 
@@ -1037,8 +1149,13 @@ LRESULT CALLBACK initModifyForm(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lpara
 		break;
 	case WM_MOUSEMOVE:
 		break;
-	case WM_DESTROY:
-		PostQuitMessage(0);
+	case WM_CLOSE:
+		SetWindowLongPtr(WindowForm, GWL_WNDPROC, (LONG)&MainWindow);
+		ShowWindow(WindowForm, SW_SHOW);
+		SetFocus(WindowForm);
+		UpdateWindow(WindowForm);
+		ShowWindow(modifyform, SW_HIDE);
+		//PostQuitMessage(0);
 		return 0;
 	default:
 		break;
