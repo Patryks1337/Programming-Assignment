@@ -1,2 +1,2 @@
 # Programming-Assignment
-This is slightly older version as the latest one is stored on my college computer and i currently have no access to it. 
+Made just in 3-4 hours for a simple purpose of tracking score for different teams and players. This was part of my college assigemen. 
